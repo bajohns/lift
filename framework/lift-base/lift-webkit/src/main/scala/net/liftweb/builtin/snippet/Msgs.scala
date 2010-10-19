@@ -44,8 +44,13 @@ import _root_.net.liftweb.common.{Box, Full, Empty}
  * &lt;/lift:snippet&gt;
  * </pre>
  *
- * AJAX notices are rendered via the LiftRules.noticesToJsCmd rule.
+ * JavaScript fadeout and effects for the three types of notices (Errors, Warnings and Notices) can
+ * be configured via LiftRules.noticesAutoFadeOut and LiftRules.noticesEffects. Notices for individual
+ * elements based on id can be rendered using the &lt;lift:msg/> tag.
  *
+ * @see net.liftweb.builtin.snippet.Msg
+ * @see net.liftweb.http.LiftRules#noticesAutoFadeOut
+ * @see net.liftweb.http.LiftRules#noticesEffects
  */
 object Msgs extends DispatchSnippet {
   // Dispatch to the render method no matter how we're called
@@ -87,9 +92,7 @@ object Msgs extends DispatchSnippet {
 
     // Delegate the actual rendering to a shared method so that we don't
     // duplicate code for the AJAX pipeline
-    val rendered = renderNotices()
-
-    (<div>{rendered}</div> % ("id" -> LiftRules.noticesContainerId)) ++
+    (<div>{renderNotices()}</div> % ("id" -> LiftRules.noticesContainerId)) ++
     noticesFadeOut(NoticeType.Notice) ++
     noticesFadeOut(NoticeType.Warning) ++
     noticesFadeOut(NoticeType.Error) ++
@@ -103,9 +106,13 @@ object Msgs extends DispatchSnippet {
    * the current user-specific formatting from the &lt;lift:Msgs> tag.
    */
   def renderNotices() : NodeSeq = {
-    // Determine which formatting function to use
-    val f = if (ShowAll.is) S.messages _
-            else S.noIdMessages _
+    // Determine which formatting function to use based on tag usage
+    val f = 
+      if (ShowAll.is) {
+        S.messages _
+      } else {
+        S.noIdMessages _
+      }
 
     // Compute the formatted set of messages for a given input
     def computeMessageDiv (args : (List[(NodeSeq,Box[String])],NoticeType.Value,SessionVar[Box[AjaxMessageMeta]])) : NodeSeq = args match {
@@ -183,13 +190,38 @@ object Msgs extends DispatchSnippet {
     effects(Full(noticeType), noticeType.id, NodeSeq.Empty, Full(tailScript))
 }
 
-object MsgsNoticeMeta extends SessionVar[Box[AjaxMessageMeta]](Empty)
-object MsgsWarningMeta extends SessionVar[Box[AjaxMessageMeta]](Empty)
+/**
+ * This SessionVar holds formatting data for notice notices
+ * so that the AJAX and static notice renderers use the same formatting.
+ */
 object MsgsErrorMeta extends SessionVar[Box[AjaxMessageMeta]](Empty)
+
+/**
+ * This SessionVar holds formatting data for notice notices
+ * so that the AJAX and static notice renderers use the same formatting.
+ */
+object MsgsWarningMeta extends SessionVar[Box[AjaxMessageMeta]](Empty)
+
+/**
+ * This SessionVar holds formatting data for notice notices
+ * so that the AJAX and static notice renderers use the same formatting.
+ */
+object MsgsNoticeMeta extends SessionVar[Box[AjaxMessageMeta]](Empty)
+
+/**
+ * This SessionVar records whether to show id-based messages in
+ * addition to non-id messages.
+ */
 object ShowAll extends SessionVar[Boolean](false)
 
+/**
+ * This case class is used to hold formatting data for the
+ * notice groups so that AJAX and static notices
+ * render consistently.
+ */
 case class AjaxMessageMeta(title: String, cssClasses: Box[String])
 
+// Close nested packages
 }
 }
 }
