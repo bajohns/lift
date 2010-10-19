@@ -1587,6 +1587,15 @@ for {
     } ::: attrs)(f)
   }
 
+  /**
+   * Initialize the current request session if it's not already initialized.
+   * Generally this is handled by Lift during request processing, but this
+   * method is available in case you want to use S outside the scope
+   * of a request (standard HTTP or Comet).
+   *
+   * @param session the LiftSession for this request
+   * @param f A function to execute within the scope of the session
+   */
   def initIfUninitted[B](session: LiftSession)(f: => B): B = {
     if (inS.value) f
     else init(Req.nil, session)(f)
