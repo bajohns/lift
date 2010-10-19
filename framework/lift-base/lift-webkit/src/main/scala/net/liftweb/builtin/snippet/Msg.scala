@@ -48,43 +48,49 @@ object Msg extends DispatchSnippet {
   def dispatch: DispatchIt = {
     case _ => render
   }
+
+  
   def render(styles: NodeSeq): NodeSeq = {
-    val msgs: (String) => NodeSeq = (id) => {
-      attr("errorClass").map(cls => MsgErrorMeta += (id -> cls))
-      attr("warningClass").map(cls => MsgWarningMeta += (id -> cls))
-      attr("noticeClass").map(cls => MsgNoticeMeta += (id -> cls))
-
-      val f = messagesById(id) _
-
-      List((f(S.errors), attr("errorClass")),
-           (f(S.warnings), attr("warningClass")),
-           (f(S.notices), attr("noticeClass"))).flatMap {
-        case (msg, style) =>
-          msg.toList match {
-            case Nil => Nil
-            case msgList => style match {
-                case Full(s) => msgList flatMap (t => <span>{t}</span> % ("class" -> s))
-                case _ => msgList flatMap ( n => n )
-            }
-          }
-       }
-    }
-
     attr("id") match {
-      case Full(id) => (<span>{msgs(id)}</span> % ("id" -> id)) ++ effects(id)
+      case Full(id) => {
+        // Extract the currently set CSS
+        attr("errorClass").map(cls => MsgErrorMeta += (id -> cls))
+        attr("warningClass").map(cls => MsgWarningMeta += (id -> cls))
+        attr("noticeClass").map(cls => MsgNoticeMeta += (id -> cls))
+
+        renderIdMsgs(id) ++ effects(id)
+      }
       case _ => NodeSeq.Empty
     }
-
   }
 
-  def effects(id: String): NodeSeq = LiftRules.noticesEffects()(Empty, id) match {
-    case Full(jsCmd) => 
-      <lift:tail>{
-        Script(OnLoad(jsCmd))
-      }</lift:tail>
-    case _ => NodeSeq.Empty
+  def renderIdMsgs(id : String) : NodeSeq = {
+    val msgs : List[NodeSeq] = List((S.messagesById(id)(S.errors), MsgErrorMeta.get.get(id)),
+                                    (S.messagesById(id)(S.warnings), MsgWarningMeta.get.get(id)),
+                                    (S.messagesById(id)(S.notices), MsgNoticeMeta.get.get(id))).flatMap {
+      case (msg, style) =>
+        msg.toList match {
+          case Nil => Nil
+          case msgList => style match {
+            case Some(s) => msgList.flatMap(t => <span>{t}</span> % ("class" -> s))
+            case _ => msgList flatMap ( n => n )
+          }
+        }
+    }
+
+    // Join multiple messages together with a comma
+    val commafied = msgs match {
+      case Nil => Text("")
+      case spans => spans.reduceLeft {
+        (output,span) => output ++ Text(", ") ++ span
+      }
+    }
+
+    <span>{commafied}</span> % ("id" -> id)
   }
 
+  def effects(id: String): NodeSeq = 
+    Msgs.effects(Empty, id, NodeSeq.Empty, Full(Msgs.tailScript))
 }
 
 object MsgErrorMeta extends SessionVar[HashMap[String, String]](new HashMap)

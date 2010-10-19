@@ -2476,8 +2476,22 @@ for {
  * Defines the notices types
  */
 @serializable
-object NoticeType extends Enumeration {
-  val Notice, Warning, Error = Value
+object NoticeType {
+  sealed abstract class Value(val title : String) {
+    def lowerCaseTitle = title.toLowerCase
+
+    // The element ID to use for notice divs
+    def id : String = LiftRules.noticesContainerId + "_" + lowerCaseTitle
+
+    // The element that will define the title to use in notice messages
+    def titleTag : String = lowerCaseTitle + "_msg"
+
+    def styleTag : String = lowerCaseTitle + "_class"
+  }
+
+  object Notice extends Value("Notice")
+  object Warning extends Value("Warning")
+  object Error extends Value("Error")
 }
 
 /**
